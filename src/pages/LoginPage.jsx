@@ -1,34 +1,33 @@
-import { useState } from "react";
-import api from "../api/axios";
+import React, { useState, useContext } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import axios from "../api/axios";
+import { AuthContext } from "../context/AuthContext";
+import GoogleButton from "../components/GoogleButton";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+const LoginPage = () => {
+  const [form, setForm] = useState({ email: "", password: "" });
+  const { fetchUser } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post("/users/login", { email, password });
-      // save token
-      localStorage.setItem("token", res.data.token);
-      // redirect
-      window.location.href = "/dashboard";
-    } catch (err) {
-      // full error logging
-      console.error("Login error:", err);
+      const res = await axios.post("/auth/login", form);
 
-      if (err.response && err.response.data) {
-        // backend returned an error JSON
-        const errorMessage =
-          err.response.data.error || err.response.data.message || "Login failed";
-        alert("❌ " + errorMessage);
-      } else if (err.request) {
-        // request made but no response
-        alert("❌ No response from server. Is backend running?");
-      } else {
-        // something else went wrong
-        alert("❌ Error: " + err.message);
+      // ✅ Save JWT to localStorage
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
       }
+
+      // ✅ Fetch user profile
+      const user = await fetchUser();
+
+      // ✅ Redirect by role
+      if (user?.role === "admin") navigate("/admin");
+      else navigate("/dashboard");
+    } catch (err) {
+      console.error("Login failed:", err.response?.data || err.message);
+      alert("Invalid credentials");
     }
   };
 
@@ -37,36 +36,64 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100">
-      <div className="bg-white p-6 rounded shadow-md w-96">
-        <h1 className="text-2xl font-bold mb-4">Login</h1>
-        <form onSubmit={handleLogin} className="space-y-3">
+    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-md">
+        {/* Branding Header */}
+        <div className="flex flex-col items-center mb-6">
+          <img
+            src="/src/logo.png" // place logo in public/logo.png
+            alt="Alumni Portal Logo"
+            className="w-16 h-16 mb-2"
+          />
+          <h1 className="text-2xl font-bold text-gray-800">Alumni Portal</h1>
+          <p className="text-gray-500 text-sm">Welcome back! Please login.</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-4">
           <input
             type="email"
             placeholder="Email"
-            className="w-full border p-2 rounded"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
+            required
           />
           <input
             type="password"
             placeholder="Password"
-            className="w-full border p-2 rounded"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-400"
+            required
           />
-          <button className="w-full bg-blue-500 text-white py-2 rounded">
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition"
+          >
             Login
           </button>
         </form>
-        <hr className="my-4" />
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full bg-red-500 text-white py-2 rounded"
-        >
-          Sign in with Google
-        </button>
+
+        {/* Divider */}
+        <div className="flex items-center my-4">
+          <hr className="flex-grow border-gray-300" />
+          <span className="px-2 text-gray-500 text-sm">OR</span>
+          <hr className="flex-grow border-gray-300" />
+        </div>
+
+        {/* Google Login */}
+        <GoogleButton text="Login with Google" onClick={handleGoogleLogin} />
+
+        {/* Link to Register */}
+        <p className="text-center text-gray-600 mt-4">
+          Don’t have an account?{" "}
+          <Link to="/register" className="text-blue-600 hover:underline">
+            Register here
+          </Link>
+        </p>
       </div>
     </div>
   );
-}
+};
+
+export default LoginPage;
